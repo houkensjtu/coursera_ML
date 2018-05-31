@@ -74,16 +74,20 @@ for c = 1:num_labels
 endfor
 
 % Append a bias column to X.
-X = [ones(m,1) X];
+a1 = [ones(m,1) X];
 
-a1 = sigmoid(X*Theta1');
+z2 = a1*Theta1';
 
-a1 = [ones(m, 1) a1];
+a2 = sigmoid(z2);
 
-a2 = sigmoid(a1*Theta2');
+a2 = [ones(m, 1) a2];
+
+z3 = a2*Theta2';
+
+a3 = sigmoid(z3);
 
 % Notice the .* operator in cost function.
-J = 1/m* sum(sum( -y_recode.*log(a2) - (1-y_recode).*log(1-a2)));
+J = 1/m* sum(sum( -y_recode.*log(a3) - (1-y_recode).*log(1-a3)));
 
 % Get the size of theta matrix, so that it can apply to theta of any size.
 k_Theta1 = size(Theta1,2);
@@ -98,7 +102,40 @@ J = J + lambda/(2*m)*( sum(sum(Theta1.*Theta1)(:,2:k_Theta1)) + ...
 % =========================================================================
 
 % Unroll gradients
+
+Delta_1 = zeros(size(Theta1));
+Delta_2 = zeros(size(Theta2));
+%delta3 = a3 - y_recode;
+
+a_1 = zeros(m,size(X,2)+1);
+z_2 = zeros(m,size(Theta1,1));
+a_2 = zeros(m,size(Theta2,2));
+z_3 = zeros(m,size(Theta2,1));
+a_3 = zeros(m,size(Theta2,1));
+delta_3 = zeros(m,size(Theta2,1));
+delta_2 = zeros(m,size(Theta2,2));
+for t = 1:m
+
+    a_1(t,:) = [1 X(t,:)]; % 1x401
+    
+    z_2(t,:) = a_1(t,:) * Theta1'; % 1x25
+    a_2(t,:) = [1 sigmoid(z_2(t,:))]; % 1x26
+    
+    z_3(t,:) = a_2(t,:) * Theta2'; % 1x10
+    a_3(t,:) = sigmoid(z_3(t,:)); % 1x10
+    
+    delta_3(t,:) = a_3(t,:) - y_recode(t,:); % 1x10
+    
+    delta_2(t,:) = delta_3(t,:) * Theta2 .* a_2(t,:) .* (1-a_2(t,:)); %1x26
+    
+    Delta_2 = Delta_2 + delta_3(t,:)' * a_2(t,:); % 10x26   
+    Delta_1 = Delta_1 + delta_2(t,2:end)' * a_1(t,:); % 25x401
+endfor 
+
+Theta1_grad = 1/m * Delta_1;
+Theta2_grad = 1/m * Delta_2;
+
+Theta1_grad(:,2:k_Theta1) = Theta1_grad(:,2:k_Theta1) + lambda/m*Theta1(:,2:k_Theta1);
+Theta2_grad(:,2:k_Theta2) = Theta2_grad(:,2:k_Theta2) + lambda/m*Theta2(:,2:k_Theta2);
 grad = [Theta1_grad(:) ; Theta2_grad(:)];
-
-
 end
